@@ -14,11 +14,12 @@ class DefaultSource extends RelationProvider {
 
     val normalizeNames = parameters.get("normalizeNames") match {
       case Some(e) => e.toBoolean
-      case _       => true
+      case _ => true
     }
 
     XlsRelation(
       path,
+      parameters.get("sheet"),
       normalizeNames)(sqlContext)
 
   }

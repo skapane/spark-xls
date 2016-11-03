@@ -16,13 +16,16 @@ import org.apache.poi.ss.usermodel.{ Row => XRow }
 import scala.util.matching.Regex
 
 /**
- *
+ * If sheetName is not set, the active will be opened 
+ * 
  * @param path path of the xls file
+ * @param sheetName the optional sheet name to open
  * @param normalizeNames normalize column names: replace invalid chars
  *
  */
 case class XlsRelation(
   path: String,
+  sheetName: Option[String] = None,
   normalizeNames: Boolean = true)(@transient val sqlContext: SQLContext)
     extends BaseRelation with TableScan {
 
@@ -51,6 +54,12 @@ case class XlsRelation(
 
   // open workbook
   val wb = WorkbookFactory.create(input.open())
+  
+  // get sheet by name or active one
+  val sheet = sheetName match {
+    case Some(s) => wb.getSheet(s)
+    case None => wb.getSheetAt(wb.getActiveSheetIndex)
+  }
 
   // get cell evaluator
   val evaluator = wb.getCreationHelper().createFormulaEvaluator()
@@ -60,7 +69,7 @@ case class XlsRelation(
 
   // extract header from first row
   def extractHeader(): Seq[Header] = {
-    val it = wb.getSheetAt(0).rowIterator()
+    val it = sheet.rowIterator()
     if (it.hasNext()) {
       it.next().cellIterator().asScala.map { x =>
         Header(
@@ -102,7 +111,7 @@ case class XlsRelation(
     }
 
     sqlContext.sparkContext.parallelize(
-      wb.getSheetAt(0)
+      sheet
         .rowIterator()
         .asScala
         .drop(1) // remove header
